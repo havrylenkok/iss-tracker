@@ -50,47 +50,67 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
-  // Corrected coordinate mapping
+  // Professional coordinate mapping for geographic to Cartesian conversion
   const getISSPosition = (lat: number, long: number) => {
-    const phi = (90 - lat) * (Math.PI / 180)
-    const theta = (long + 180) * (Math.PI / 180)
-    const x = Math.sin(phi) * Math.cos(theta)
-    const z = -Math.sin(phi) * Math.sin(theta)
-    const y = Math.cos(phi)
-    return [x * 1.1, y * 1.1, z * 1.1]
+    // Convert to radians and adjust for Three.js coordinate system
+    const latRad = lat * (Math.PI / 180)
+    const longRad = -long * (Math.PI / 180)
+    
+    // Standard spherical to Cartesian conversion
+    const radius = 1.1
+    return [
+      radius * Math.cos(latRad) * Math.cos(longRad),
+      radius * Math.sin(latRad),
+      radius * Math.cos(latRad) * Math.sin(longRad)
+    ]
+  }
+
+  // Calculate camera position to look at ISS
+  const getCameraRotation = (long: number) => {
+    // Convert to radians and adjust for texture orientation
+    return [0, (-long * Math.PI) / 180 + Math.PI / 2, 0]
   }
 
   return (
     <div className="relative h-screen w-screen">
-      <Canvas>
-        <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
+      <Canvas camera={{ position: [0, 0, 2.75], fov: 45 }}>
+        <OrbitControls 
+          enablePan={true} 
+          enableZoom={true} 
+          enableRotate={true}
+          minDistance={1.5}
+          maxDistance={4}
+          rotateSpeed={0.5}
+        />
         <Stars radius={300} depth={60} count={20000} factor={7} />
         
-        {/* Increased ambient light and adjusted directional lights */}
+        {/* Lighting setup */}
         <ambientLight intensity={0.8} />
         <directionalLight position={[5, 3, 5]} intensity={1.5} />
         <directionalLight position={[-5, -3, -5]} intensity={0.5} />
         <hemisphereLight intensity={0.5} />
         
-        {/* Earth */}
-        <mesh rotation={[0, Math.PI / 2, 0]}>
-          <sphereGeometry args={[1, 64, 64]} />
-          <meshPhongMaterial 
-            map={earthTexture}
-            normalMap={normalMap}
-            specularMap={specularMap}
-            normalScale={new THREE.Vector2(0.85, 0.85)}
-            shininess={5}
-          />
-        </mesh>
-
-        {/* ISS - made it slightly larger and brighter */}
-        {issPosition && (
-          <mesh position={getISSPosition(issPosition.latitude, issPosition.longitude)}>
-            <sphereGeometry args={[0.03, 16, 16]} />
-            <meshStandardMaterial color="red" emissive="red" emissiveIntensity={3} />
+        {/* Earth with dynamic rotation to follow ISS */}
+        <group rotation={issPosition ? getCameraRotation(issPosition.longitude) : [0, Math.PI / 2, 0]}>
+          <mesh>
+            <sphereGeometry args={[1, 64, 64]} />
+            <meshPhongMaterial 
+              map={earthTexture}
+              normalMap={normalMap}
+              specularMap={specularMap}
+              normalScale={new THREE.Vector2(0.85, 0.85)}
+              shininess={5}
+            />
           </mesh>
-        )}
+
+          {/* ISS marker */}
+          {issPosition && (
+            <mesh position={getISSPosition(issPosition.latitude, issPosition.longitude)}>
+              <sphereGeometry args={[0.03, 16, 16]} />
+              <meshStandardMaterial color="red" emissive="red" emissiveIntensity={3} />
+            </mesh>
+          )}
+        </group>
       </Canvas>
 
       {/* Info Panel */}
