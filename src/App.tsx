@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Stars } from '@react-three/drei'
 import * as THREE from 'three'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
 interface ISSPosition {
   latitude: number
@@ -13,6 +14,8 @@ interface ISSPosition {
 
 function App() {
   const [issPosition, setIssPosition] = useState<ISSPosition | null>(null)
+  const controlsRef = useRef<OrbitControlsImpl>(null)
+  const initialViewSet = useRef(false)  // Track if we've set the initial view
   
   // Load both color and normal maps
   const earthTexture = new THREE.TextureLoader().load(
@@ -51,30 +54,44 @@ function App() {
   }, [])
 
   // Professional coordinate mapping for geographic to Cartesian conversion
-  const getISSPosition = (lat: number, long: number) => {
-    // Convert to radians and adjust for Three.js coordinate system
+  const getISSPosition = (lat: number, long: number): THREE.Vector3 => {
     const latRad = lat * (Math.PI / 180)
     const longRad = -long * (Math.PI / 180)
     
-    // Standard spherical to Cartesian conversion
     const radius = 1.1
-    return [
+    return new THREE.Vector3(
       radius * Math.cos(latRad) * Math.cos(longRad),
       radius * Math.sin(latRad),
       radius * Math.cos(latRad) * Math.sin(longRad)
-    ]
+    )
   }
 
-  // Calculate camera position to look at ISS
-  const getCameraRotation = (long: number) => {
-    // Convert to radians and adjust for texture orientation
-    return [0, (-long * Math.PI) / 180 + Math.PI / 2, 0]
-  }
+  // Effect to set initial view to ISS only once
+  useEffect(() => {
+    if (issPosition && controlsRef.current && !initialViewSet.current) {
+      // Convert ISS position to camera angles
+      const longitude = (-issPosition.longitude * Math.PI) / 180
+      const latitude = (issPosition.latitude * Math.PI) / 180
+      
+      // Set azimuthal angle (rotation around Y axis)
+      controlsRef.current.setAzimuthalAngle(longitude)
+      
+      // Set polar angle (rotation around X axis)
+      // PI/2 is the equator, subtract latitude to move up/down
+      controlsRef.current.setPolarAngle(Math.PI / 2 - latitude)
+      
+      // Update camera
+      controlsRef.current.update()
+      
+      initialViewSet.current = true
+    }
+  }, [issPosition])
 
   return (
     <div className="relative h-screen w-screen">
       <Canvas camera={{ position: [0, 0, 2.75], fov: 45 }}>
         <OrbitControls 
+          ref={controlsRef}
           enablePan={true} 
           enableZoom={true} 
           enableRotate={true}
@@ -90,8 +107,8 @@ function App() {
         <directionalLight position={[-5, -3, -5]} intensity={0.5} />
         <hemisphereLight intensity={0.5} />
         
-        {/* Earth with dynamic rotation to follow ISS */}
-        <group rotation={issPosition ? getCameraRotation(issPosition.longitude) : [0, Math.PI / 2, 0]}>
+        {/* Earth - no dynamic rotation */}
+        <group rotation={[0, Math.PI / 2, 0]}>
           <mesh>
             <sphereGeometry args={[1, 64, 64]} />
             <meshPhongMaterial 
