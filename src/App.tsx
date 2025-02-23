@@ -90,17 +90,15 @@ function App() {
   useEffect(() => {
     const fetchInitialPosition = async () => {
       try {
-        const response = await fetch('http://api.open-notify.org/iss-now.json')
+        const response = await fetch('https://api.wheretheiss.at/v1/satellites/25544')
         const data = await response.json()
-        const velocityResponse = await fetch('https://api.wheretheiss.at/v1/satellites/25544')
-        const velocityData = await velocityResponse.json()
         
         const initialIssPosition = {
-          latitude: parseFloat(data.iss_position.latitude),
-          longitude: parseFloat(data.iss_position.longitude),
-          altitude: velocityData.altitude,
-          velocity: velocityData.velocity,
-          timestamp: data.timestamp
+          latitude: data.latitude,
+          longitude: data.longitude,
+          altitude: data.altitude,
+          velocity: data.velocity,
+          timestamp: Math.floor(new Date(data.timestamp * 1000).getTime() / 1000)
         }
 
         setIssPosition(initialIssPosition)
@@ -120,17 +118,15 @@ function App() {
   // Regular position updates
   const fetchISSPosition = async () => {
     try {
-      const response = await fetch('http://api.open-notify.org/iss-now.json')
+      const response = await fetch('https://api.wheretheiss.at/v1/satellites/25544')
       const data = await response.json()
-      const velocityResponse = await fetch('https://api.wheretheiss.at/v1/satellites/25544')
-      const velocityData = await velocityResponse.json()
       
       setIssPosition({
-        latitude: parseFloat(data.iss_position.latitude),
-        longitude: parseFloat(data.iss_position.longitude),
-        altitude: velocityData.altitude,
-        velocity: velocityData.velocity,
-        timestamp: data.timestamp
+        latitude: data.latitude,
+        longitude: data.longitude,
+        altitude: data.altitude,
+        velocity: data.velocity,
+        timestamp: Math.floor(new Date(data.timestamp * 1000).getTime() / 1000)
       })
     } catch (error) {
       console.error('Error fetching ISS position:', error)
