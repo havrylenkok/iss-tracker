@@ -36,7 +36,7 @@ export const Earth: React.FC<EarthProps> = ({
           normalMap={normalMap}
           specularMap={specularMap}
           normalScale={new THREE.Vector2(0.85, 0.85)}
-          shininess={5}
+          shininess={15}
         />
       </mesh>
 
